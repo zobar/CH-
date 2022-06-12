@@ -1,3 +1,4 @@
 boto3
 pyopencl
+PyWavelets
 soundfile
