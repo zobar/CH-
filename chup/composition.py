@@ -12,7 +12,7 @@ class Composition:
     def concatenate(cls, compositions):
         sample_rate = compositions[0].sample_rate
         samples = [composition.samples for composition in compositions]
-        return Composition(np.concatenate(samples), sample_rate)
+        return Composition(0, np.concatenate(samples), sample_rate)
 
     @classmethod
     def from_s3(cls, bucket, key):
@@ -24,17 +24,42 @@ class Composition:
     @classmethod
     def from_soundfile(cls, *args, **kwargs):
         samples, sample_rate = sf.read(*args, **kwargs)
-        return cls(samples, sample_rate)
+        return cls(0, samples, sample_rate)
 
-    def __init__(self, samples, sample_rate):
+    def __init__(self, lead_in, samples, sample_rate):
+        self.lead_in = lead_in
         self.samples = samples
         self.sample_rate = sample_rate
 
-    def decompose(self, wavelet):
-        return d.Decomposition.from_composition(wavelet, self)
+    def __len__(self):
+        return len(self.samples)
+
+    def compose(self):
+        return self
+
+    def decompose(self, wavelet, levels):
+        if levels < 2:
+            return self
+        else:
+            return d.Decomposition.from_composition(wavelet, self, levels)
+
+    def decorrelated(self):
+        input = self.samples
+        shape = input.shape
+        half = shape[0] >> 1
+        full = half << 1
+        temp_shape = (half, 2) + shape[1:]
+        output_shape = (full,) + shape[1:]
+        print('{} -> {} -> {}'.format(shape, temp_shape, output_shape))
+        temp = np.fliplr(np.reshape(input[:full], temp_shape))
+        output = np.reshape(temp, output_shape)
+        return Composition(self.lead_in, output, self.sample_rate)
 
     def muted(self):
-        return Composition(np.zeros_like(self.samples), self.sample_rate)
+        return Composition(self.lead_in, np.zeros_like(self.samples), self.sample_rate)
+
+    def reversed(self):
+        return Composition(self.lead_in, np.flipud(self.samples), self.sample_rate)
 
     def to_s3(self, bucket, key, **kwargs):
         with TemporaryFile() as temp:

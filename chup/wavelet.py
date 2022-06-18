@@ -134,6 +134,9 @@ class Wavelet:
         approximation, detail = pywt.dwt(cpu_samples, self.name)
         return (np.transpose(approximation), np.transpose(detail))
 
+    def lead_in(self):
+        return self.length - 2
+
 haar = Wavelet.orthogonal('haar', [0.7071067811865476, 0.7071067811865476])
 db2 = Wavelet.orthogonal('db2', [0.48296291314469025, 0.836516303737469, 0.22414386804185735, -0.12940952255092145])
 db3 = Wavelet.orthogonal('db3', [0.3326705529509569, 0.8068915093133388,0.4598775021193313, -0.13501102001039084, -0.08544127388224149, 0.035226291882100656])

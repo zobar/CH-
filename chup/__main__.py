@@ -16,6 +16,7 @@ list_objects_v2 = s3.get_paginator('list_objects_v2')
 parser = ArgumentParser(prog='CH▲')
 parser.add_argument('bucket')
 parser.add_argument('input', nargs='+')
+parser.add_argument('--levels', default=11)
 args = parser.parse_args()
 
 keys = [info['Key']
@@ -26,29 +27,27 @@ keys = [info['Key']
 library = Library.from_s3(args.bucket, keys)
 mega = Composition.concatenate(library.compositions)
 
-for w in wavelet.rbio:
-    print(w.name)
+decomposition = mega.decompose(wavelet.sym14, args.levels).reversed()
+#     gpu_approximation = decomposition.approximation.samples
+#     gpu_detail = decomposition.detail.samples
 
-    decomposition = mega.decompose(w)
-    gpu_approximation = decomposition.approximation.samples
-    gpu_detail = decomposition.detail.samples
+#     approximation, detail = decomposition.wavelet.decompose_cpu(mega.samples)
+#     lead_in = (decomposition.wavelet.length - 2) >> 1
+#     cpu_approximation = np.resize(approximation[lead_in:], gpu_approximation.shape)
+#     cpu_detail = np.resize(detail[lead_in:], gpu_detail.shape)
 
-    approximation, detail = decomposition.wavelet.decompose_cpu(mega.samples)
-    lead_in = (decomposition.wavelet.length - 2) >> 1
-    cpu_approximation = np.resize(approximation[lead_in:], gpu_approximation.shape)
-    cpu_detail = np.resize(detail[lead_in:], gpu_detail.shape)
+#     max_a_delta = np.max(np.abs(gpu_approximation - cpu_approximation))
+#     max_d_delta = np.max(np.abs(gpu_detail - cpu_detail))
 
-    max_a_delta = np.max(np.abs(gpu_approximation - cpu_approximation))
-    max_d_delta = np.max(np.abs(gpu_detail - cpu_detail))
+#     print('Maximum approximation error: {}'.format(max_a_delta))
+#     print('Maximum detail error: {}'.format(max_d_delta))
 
-    print('Maximum approximation error: {}'.format(max_a_delta))
-    print('Maximum detail error: {}'.format(max_d_delta))
+composition = decomposition.compose()
+#     lead_in = decomposition.wavelet.length - 2
+#     round_trip = composition.samples
+#     original = np.resize(mega.samples[lead_in:], round_trip.shape)
+#     delta = np.max(np.abs(original - round_trip))
+#     print('Maximum reconstruction error: {}'.format(delta))
 
-    composition = decomposition.compose()
-    lead_in = decomposition.wavelet.length - 2
-    round_trip = composition.samples
-    original = np.resize(mega.samples[lead_in:], round_trip.shape)
-    delta = np.max(np.abs(original - round_trip))
-    print('Maximum reconstruction error: {}'.format(delta))
-
-    print()
+composition.to_s3(args.bucket, 'output/reversed-{}.flac'.format(decomposition.wavelet.name), format='flac')
+#     print()
